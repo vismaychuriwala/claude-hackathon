@@ -16,6 +16,7 @@ from config.config import (
     TRANSFORMATION_LOG_FILE, CLEANED_DIR, REPORTS_DIR, LOGS_DIR
 )
 from core.ceo import ceo, AgentRequest
+from agents import DataAgent, PlotAgent, AnalysisAgent
 
 
 app = Flask(__name__)
@@ -25,8 +26,70 @@ app.config['UPLOAD_FOLDER'] = RAW_DIR
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls', 'json', 'pdf', 'txt'}
 
 
+# Register agents with CEO on module load
+def _setup_agents():
+    """Register all agents with CEO when the app module is imported"""
+    if not ceo.agents:  # Only register if not already done
+        data_agent = DataAgent()
+        plot_agent = PlotAgent()
+        analysis_agent = AnalysisAgent()
+
+        ceo.register_agent("data", data_agent)
+        ceo.register_agent("plot", plot_agent)
+        ceo.register_agent("analysis", analysis_agent)
+        print("[UI] All agents registered with CEO")
+
+
+_setup_agents()
+
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def cleanup_old_data():
+    """
+    Delete all previous pipeline outputs before starting new run.
+    This ensures a clean slate for each new file upload.
+    """
+    print("[UI] Cleaning up old data from previous runs...")
+
+    # Directories to clean (delete contents, recreate empty)
+    directories_to_clean = [CLEANED_DIR, PLOTS_DIR, REPORTS_DIR, LOGS_DIR]
+
+    # Individual files to delete
+    files_to_delete = [
+        STATUS_FILE,
+        SCHEMA_FILE,
+        PLOT_METADATA_FILE,
+        INSIGHTS_FILE,
+        DATA_QUALITY_REPORT_FILE,
+        ANALYSIS_REPORT_FILE,
+        TRANSFORMATION_LOG_FILE
+    ]
+
+    # Delete and recreate directories
+    for directory in directories_to_clean:
+        if directory.exists():
+            try:
+                shutil.rmtree(directory)
+                print(f"[UI] Deleted directory: {directory}")
+            except Exception as e:
+                print(f"[UI] Error deleting directory {directory}: {e}")
+
+        # Recreate empty directory
+        directory.mkdir(parents=True, exist_ok=True)
+
+    # Delete individual files
+    for file_path in files_to_delete:
+        if file_path.exists():
+            try:
+                file_path.unlink()
+                print(f"[UI] Deleted file: {file_path}")
+            except Exception as e:
+                print(f"[UI] Error deleting file {file_path}: {e}")
+
+    print("[UI] Cleanup completed.")
 
 
 # ========================================
@@ -88,6 +151,9 @@ def upload_file():
     filename = secure_filename(file.filename)
     filepath = RAW_DIR / filename
     file.save(filepath)
+
+    # Clean up old data from previous runs
+    cleanup_old_data()
 
     # Trigger CEO pipeline in background thread
     def run_pipeline_async():
