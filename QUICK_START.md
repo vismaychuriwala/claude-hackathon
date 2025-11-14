@@ -7,11 +7,22 @@ The project runs end-to-end with placeholder implementations. All TODO sections 
 ## 🚀 Installation (One-time)
 
 ```bash
+# Create and activate virtual environment
+python3 -m venv venv
+source venv/bin/activate  # On Linux/Mac
+# OR
+venv\Scripts\activate     # On Windows
+
 # Install dependencies
 pip install -r requirements.txt
 
 # Optional: Set Claude API key (not needed for testing structure)
 export CLAUDE_API_KEY="your-key-here"
+```
+
+**Quick activation script**: Created `activate.sh` for easy activation:
+```bash
+source activate.sh  # Activates venv and sets up environment
 ```
 
 ## 🎯 Run Commands
