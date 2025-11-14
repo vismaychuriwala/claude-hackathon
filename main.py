@@ -44,56 +44,37 @@ def setup_agents():
 
 def run_pipeline_example(file_path: str):
     """
-    Example: Run full pipeline on a file
+    Example: Run full pipeline on a file using CEO orchestration
 
     INPUT:
         - file_path: Path to data file
 
     This demonstrates how to use the system programmatically
     """
-    print(f"\n🚀 Running pipeline on: {file_path}")
+    print(f"\n🚀 Running pipeline on: {file_path}\n")
 
-    # Step 1: Data processing
-    print("\n[1/3] Data Agent processing...")
-    data_request = AgentRequest("data", "process_file", {"file_path": file_path})
-    data_response = ceo.execute_with_retry(data_request)
+    # Use CEO's run_pipeline method (handles all orchestration)
+    results = ceo.run_pipeline(file_path)
 
-    if not data_response.success:
-        print(f"❌ Data processing failed: {data_response.error}")
-        return
-
-    print(f"✓ Data processed: {data_response.data.get('cleaned_data_path')}")
-
-    # Step 2: Plotting
-    print("\n[2/3] Plot Agent creating visualizations...")
-    plot_request = AgentRequest("plot", "create_plots", data_response.data)
-    plot_response = ceo.execute_with_retry(plot_request)
-
-    if not plot_response.success:
-        print(f"❌ Plotting failed: {plot_response.error}")
-        return
-
-    print(f"✓ Created {plot_response.data.get('total_plots', 0)} plots")
-
-    # Step 3: Analysis
-    print("\n[3/3] Analysis Agent generating insights...")
-    analysis_request = AgentRequest("analysis", "generate_insights", {})
-    analysis_response = ceo.execute_with_retry(analysis_request)
-
-    if not analysis_response.success:
-        print(f"❌ Analysis failed: {analysis_response.error}")
-        return
-
-    print(f"✓ Generated {analysis_response.data.get('insights_count', 0)} insights")
-
+    # Display summary
     print("\n" + "=" * 50)
-    print("✓ Pipeline complete!")
+    if results["success"]:
+        print("✓ Pipeline completed successfully!")
+    else:
+        print(f"⚠️  Pipeline completed with errors:")
+        for error in results["errors"]:
+            print(f"  - {error}")
     print("=" * 50)
-    print("\nOutputs:")
-    print(f"  - Cleaned data: {data_response.data.get('cleaned_data_path')}")
-    print(f"  - Plots: {plot_response.data.get('total_plots')} files in output/plots/")
-    print(f"  - Insights: {analysis_response.data.get('insights_path')}")
-    print(f"  - Reports: output/reports/")
+
+    # Display outputs
+    if results["data"]:
+        print("\nOutputs:")
+        print(f"  - Cleaned data: {results['data'].get('cleaned_data_path')}")
+        if results["plot"]:
+            print(f"  - Plots: {results['plot'].get('total_plots', 0)} files in output/plots/")
+        if results["analysis"]:
+            print(f"  - Insights: {results['analysis'].get('insights_path')}")
+        print(f"  - Reports: output/reports/")
 
 
 def start_ui():
