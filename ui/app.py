@@ -4,6 +4,7 @@ Handles: Web interface, file upload, status display, visualization gallery
 """
 import json
 import os
+import threading
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from werkzeug.utils import secure_filename
@@ -87,16 +88,25 @@ def upload_file():
     filepath = RAW_DIR / filename
     file.save(filepath)
 
-    # TODO: Trigger CEO pipeline
-    # Example:
-    # request = AgentRequest("data", "process_file", {"file_path": str(filepath)})
-    # response = ceo.execute_with_retry(request)
+    # Trigger CEO pipeline in background thread
+    def run_pipeline_async():
+        try:
+            print(f"[UI] Starting pipeline for {filepath}")
+            result = ceo.run_pipeline(str(filepath))
+            print(f"[UI] Pipeline completed: {result}")
+        except Exception as e:
+            print(f"[UI] Pipeline error: {e}")
 
-    print(f"[UI] TODO: Trigger CEO pipeline for {filepath}")
+    # Start pipeline in background thread
+    pipeline_thread = threading.Thread(target=run_pipeline_async)
+    pipeline_thread.daemon = True
+    pipeline_thread.start()
+
+    print(f"[UI] File uploaded and pipeline started for {filepath}")
 
     return jsonify({
         "success": True,
-        "message": f"File uploaded successfully: {filename}",
+        "message": f"File uploaded successfully: {filename}. Pipeline started.",
         "file_path": str(filepath)
     })
 
@@ -245,18 +255,79 @@ def retry_stage(stage):
 
     OUTPUT:
         - JSON {"success": bool, "message": str}
-
-    TODO: Implement retry logic
-    - Create new request for the stage
-    - Execute via CEO
-    - Return result
     """
-    print(f"[UI] TODO: Implement retry for stage: {stage}")
+    print(f"[UI] Retrying stage: {stage}")
 
-    return jsonify({
-        "success": False,
-        "message": "Retry not implemented yet"
-    }), 501
+    # Validate stage name
+    valid_stages = ['data', 'plot', 'analysis']
+    if stage not in valid_stages:
+        return jsonify({
+            "success": False,
+            "message": f"Invalid stage: {stage}. Valid stages: {valid_stages}"
+        }), 400
+
+    # Get the last processed file from status
+    if not STATUS_FILE.exists():
+        return jsonify({
+            "success": False,
+            "message": "No active pipeline to retry"
+        }), 400
+
+    try:
+        with open(STATUS_FILE, 'r') as f:
+            status_data = json.load(f)
+
+        # Find the file path from the most recent run
+        # For simplicity, we'll look for the most recent file in RAW_DIR
+        raw_files = list(RAW_DIR.glob('*'))
+        if not raw_files:
+            return jsonify({
+                "success": False,
+                "message": "No uploaded files found"
+            }), 400
+
+        latest_file = max(raw_files, key=lambda p: p.stat().st_mtime)
+
+        # Retry the stage in background thread
+        def retry_async():
+            try:
+                print(f"[UI] Retrying {stage} stage for {latest_file}")
+
+                if stage == 'data':
+                    request = AgentRequest("data", "process_file", {"file_path": str(latest_file)})
+                    response = ceo.execute_with_retry(request)
+                elif stage == 'plot':
+                    # Need data from previous stage
+                    if SCHEMA_FILE.exists():
+                        request = AgentRequest("plot", "create_plots", {"file_path": str(latest_file)})
+                        response = ceo.execute_with_retry(request)
+                    else:
+                        print(f"[UI] Cannot retry plot: data stage not completed")
+                        return
+                elif stage == 'analysis':
+                    request = AgentRequest("analysis", "analyze", {"file_path": str(latest_file)})
+                    response = ceo.execute_with_retry(request)
+
+                print(f"[UI] Retry completed for {stage}: {response.success}")
+
+            except Exception as e:
+                print(f"[UI] Retry error for {stage}: {e}")
+
+        retry_thread = threading.Thread(target=retry_async)
+        retry_thread.daemon = True
+        retry_thread.start()
+
+        return jsonify({
+            "success": True,
+            "message": f"Retry initiated for {stage} stage"
+        })
+
+    except Exception as e:
+        print(f"[UI] Error in retry endpoint: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"Retry failed: {str(e)}"
+        }), 500
 
 
 # TODO: Create HTML template at ui/templates/index.html

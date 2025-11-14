@@ -258,8 +258,35 @@
                 .then(status => {
                     displayStatus(status);
 
-                    // TODO: AMIT - Check if pipeline complete and load results
-                    // Load schema, plots, insights when stages complete
+                    // Load results when stages complete
+                    if (status.stages) {
+                        // Load schema and quality report when data stage completes
+                        if (status.stages.data && status.stages.data.status === 'completed') {
+                            loadSchema();
+                            loadQualityReport();
+                        }
+
+                        // Load plots when plot stage completes
+                        if (status.stages.plot && status.stages.plot.status === 'completed') {
+                            loadPlots();
+                        }
+
+                        // Load insights when analysis stage completes
+                        if (status.stages.analysis && status.stages.analysis.status === 'completed') {
+                            loadInsights();
+                        }
+
+                        // Check if all stages are complete and stop polling
+                        const allComplete = Object.values(status.stages).every(
+                            stage => stage.status === 'completed' || stage.status === 'failed'
+                        );
+
+                        if (allComplete && pollingInterval) {
+                            console.log('All stages complete, stopping polling');
+                            clearInterval(pollingInterval);
+                            pollingInterval = null;
+                        }
+                    }
                 });
         }
 
@@ -282,12 +309,218 @@
             statusDiv.innerHTML = html;
         }
 
-        // TODO: AMIT - Implement these functions:
-        // - loadSchema() - fetch and display schema
-        // - loadQualityReport() - fetch and display report
-        // - loadPlots() - fetch plot metadata and display images
-        // - loadInsights() - fetch and display insights
-        // - retryStage(stageName) - trigger retry for failed stage
+        // Load and display schema
+        function loadSchema() {
+            fetch('/api/schema')
+                .then(response => {
+                    if (!response.ok) throw new Error('Schema not available');
+                    return response.json();
+                })
+                .then(schema => {
+                    const schemaDiv = document.getElementById('schemaDisplay');
+                    let html = '<table style="width:100%; border-collapse: collapse;">';
+                    html += '<tr style="background: #f0f0f0;"><th>Column</th><th>Type</th><th>Null %</th><th>Details</th></tr>';
+
+                    schema.columns.forEach(col => {
+                        html += `<tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;"><strong>${col.name}</strong></td>
+                            <td style="padding: 8px;">${col.type}</td>
+                            <td style="padding: 8px;">${(col.null_pct * 100).toFixed(1)}%</td>
+                            <td style="padding: 8px; font-size: 12px;">
+                                ${col.unique_count ? `Unique: ${col.unique_count}` : ''}
+                                ${col.min !== undefined ? `Min: ${col.min}` : ''}
+                                ${col.max !== undefined ? `Max: ${col.max}` : ''}
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+
+                    if (schema.warnings && schema.warnings.length > 0) {
+                        html += '<h4 style="margin-top: 15px; color: #ff9800;">Warnings:</h4><ul>';
+                        schema.warnings.forEach(warning => {
+                            html += `<li style="color: #ff9800;">${warning}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+
+                    schemaDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading schema:', error);
+                    document.getElementById('schemaDisplay').innerHTML =
+                        '<p style="color: #999;">Schema not yet available</p>';
+                });
+        }
+
+        // Load and display quality report
+        function loadQualityReport() {
+            fetch('/api/reports/quality')
+                .then(response => {
+                    if (!response.ok) throw new Error('Report not available');
+                    return response.text();
+                })
+                .then(markdown => {
+                    const reportDiv = document.getElementById('qualityReport');
+                    // Simple markdown to HTML conversion
+                    let html = markdown
+                        .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                        .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n\n/g, '</p><p>')
+                        .replace(/^- (.+)$/gm, '<li>$1</li>');
+
+                    reportDiv.innerHTML = '<div style="line-height: 1.6;">' + html + '</div>';
+                })
+                .catch(error => {
+                    console.error('Error loading quality report:', error);
+                    document.getElementById('qualityReport').innerHTML =
+                        '<p style="color: #999;">Quality report not yet available</p>';
+                });
+        }
+
+        // Load and display plots
+        function loadPlots() {
+            fetch('/api/plots')
+                .then(response => {
+                    if (!response.ok) throw new Error('Plots not available');
+                    return response.json();
+                })
+                .then(data => {
+                    const plotsDiv = document.getElementById('plotsGallery');
+
+                    if (!data.plots || data.plots.length === 0) {
+                        plotsDiv.innerHTML = '<p style="color: #999;">No plots generated yet</p>';
+                        return;
+                    }
+
+                    plotsDiv.innerHTML = ''; // Clear existing content
+
+                    data.plots.forEach(plot => {
+                        const plotItem = document.createElement('div');
+                        plotItem.className = 'plot-item';
+                        plotItem.style.cssText = 'background: white; padding: 10px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+
+                        plotItem.innerHTML = `
+                            <img src="/plots/${plot.filename}"
+                                 alt="${plot.description || plot.type}"
+                                 style="width: 100%; border-radius: 4px; margin-bottom: 10px;"
+                                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>Image not found</text></svg>'">
+                            <h4 style="margin: 5px 0; font-size: 14px;">${plot.type || 'Plot'}</h4>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0;">${plot.description || 'No description'}</p>
+                            ${plot.insights && plot.insights.length > 0 ?
+                                '<ul style="font-size: 11px; color: #888; margin: 5px 0; padding-left: 20px;">' +
+                                plot.insights.map(i => `<li>${i}</li>`).join('') +
+                                '</ul>' : ''}
+                        `;
+
+                        plotsDiv.appendChild(plotItem);
+                    });
+
+                    // Add summary
+                    const summary = document.createElement('p');
+                    summary.style.cssText = 'grid-column: 1 / -1; text-align: center; color: #666; margin-top: 10px;';
+                    summary.textContent = `Total plots generated: ${data.total_plots || data.plots.length}`;
+                    plotsDiv.appendChild(summary);
+                })
+                .catch(error => {
+                    console.error('Error loading plots:', error);
+                    document.getElementById('plotsGallery').innerHTML =
+                        '<p style="color: #999;">Plots not yet available</p>';
+                });
+        }
+
+        // Load and display insights
+        function loadInsights() {
+            fetch('/api/insights')
+                .then(response => {
+                    if (!response.ok) throw new Error('Insights not available');
+                    return response.json();
+                })
+                .then(data => {
+                    const insightsDiv = document.getElementById('insightsDisplay');
+
+                    if (!data.insights || data.insights.length === 0) {
+                        insightsDiv.innerHTML = '<p style="color: #999;">No insights generated yet</p>';
+                        return;
+                    }
+
+                    insightsDiv.innerHTML = '';
+
+                    data.insights.forEach(insight => {
+                        const insightEl = document.createElement('div');
+                        insightEl.className = `insight ${insight.severity}`;
+
+                        insightEl.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <strong style="text-transform: uppercase; font-size: 12px;">${insight.type}</strong>
+                                <span style="background: ${
+                                    insight.severity === 'high' ? '#f44336' :
+                                    insight.severity === 'medium' ? '#ff9800' : '#4CAF50'
+                                }; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px;">
+                                    ${insight.severity}
+                                </span>
+                            </div>
+                            <p style="margin: 10px 0;">${insight.description}</p>
+                            ${insight.affected_columns && insight.affected_columns.length > 0 ?
+                                '<p style="font-size: 12px; color: #666;">Affects: ' +
+                                insight.affected_columns.join(', ') + '</p>' : ''}
+                            <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
+                                <strong>Recommendation:</strong> ${insight.recommendation}
+                            </p>
+                        `;
+
+                        insightsDiv.appendChild(insightEl);
+                    });
+
+                    // Add summary if available
+                    if (data.summary) {
+                        const summaryEl = document.createElement('div');
+                        summaryEl.style.cssText = 'margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px;';
+                        summaryEl.innerHTML = `
+                            <h4 style="margin: 0 0 10px 0;">Summary</h4>
+                            <p style="margin: 5px 0;">Total insights: ${data.summary.total_insights || data.insights.length}</p>
+                            ${data.summary.high_severity ? `<p style="margin: 5px 0; color: #f44336;">High severity: ${data.summary.high_severity}</p>` : ''}
+                            ${data.summary.recommended_next_steps && data.summary.recommended_next_steps.length > 0 ? `
+                                <h5 style="margin: 10px 0 5px 0;">Next Steps:</h5>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    ${data.summary.recommended_next_steps.map(step => `<li>${step}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                        `;
+                        insightsDiv.appendChild(summaryEl);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading insights:', error);
+                    document.getElementById('insightsDisplay').innerHTML =
+                        '<p style="color: #999;">Insights not yet available</p>';
+                });
+        }
+
+        // Retry a failed stage
+        function retryStage(stageName) {
+            if (!confirm(`Are you sure you want to retry the ${stageName} stage?`)) {
+                return;
+            }
+
+            fetch(`/api/retry/${stageName}`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Retry initiated for ${stageName} stage`);
+                        updateStatus(); // Refresh status
+                    } else {
+                        alert(`Retry failed: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error retrying stage:', error);
+                    alert('Failed to retry stage');
+                });
+        }
     </script>
 </body>
 </html>
