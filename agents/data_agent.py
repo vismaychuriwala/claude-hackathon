@@ -11,6 +11,7 @@ from config.config import (
     TRANSFORMATION_LOG_FILE, DATA_QUALITY_REPORT_FILE
 )
 from utils.claude_client import claude
+from utils.intelligent_cleaning import IntelligentDataCleaner
 
 
 class DataAgent:
@@ -21,6 +22,7 @@ class DataAgent:
 
     def __init__(self):
         self.name = "data"
+        self.intelligent_cleaner = IntelligentDataCleaner(agent_name="data")
 
     def execute(self, action: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -273,7 +275,7 @@ Return ONLY valid JSON, no markdown or explanations."""
 
     def _clean_data(self, df: pd.DataFrame, schema: Dict[str, Any]) -> tuple:
         """
-        Apply transformations to clean data
+        Apply INTELLIGENT data cleaning using Claude-generated code in sandbox.
 
         INPUT:
             - df: Raw DataFrame
@@ -283,200 +285,113 @@ Return ONLY valid JSON, no markdown or explanations."""
             - (cleaned_df, transformation_log)
             - transformation_log: Dict with operations list
 
-        Uses Claude to generate intelligent cleaning strategy based on schema
+        IMPROVEMENT OVER OLD VERSION:
+        - Claude generates flexible Python code instead of selecting from fixed operations
+        - Code executes in sandbox for safety
+        - Can perform custom transformations beyond predefined operations
+        - Validation feedback loop ensures data integrity
         """
-        print("[DataAgent] Generating cleaning strategy with Claude...")
+        print("[DataAgent] Generating intelligent cleaning strategy...")
 
         original_rows = len(df)
-        operations = []
-        cleaned_df = df.copy()
-
-        # Prepare schema summary for Claude
-        schema_summary = []
-        for col in schema["columns"]:
-            schema_summary.append({
-                "name": col["name"],
-                "type": col.get("type", "unknown"),
-                "inferred_type": col.get("inferred_type", "unknown"),
-                "null_pct": col.get("null_pct", 0),
-                "unique_count": col.get("unique_count", 0),
-                "issues": col.get("issues", []),
-                "data_quality": col.get("data_quality", "unknown")
-            })
-
-        # Ask Claude for cleaning strategy
-        prompt = f"""Based on this dataset schema, recommend a data cleaning strategy.
-
-Schema Analysis:
-{json.dumps(schema_summary, indent=2)}
-
-Dataset Warnings:
-{json.dumps(schema.get("warnings", []), indent=2)}
-
-Total rows: {len(df)}
-
-Please provide a cleaning strategy as a JSON object:
-{{
-  "operations": [
-    {{
-      "operation": "drop_column|impute_missing|cast_type|remove_duplicates|handle_outliers|normalize_categorical",
-      "column": "column_name (or null for row-level ops)",
-      "reason": "why this operation is needed",
-      "parameters": {{"method": "median|mode|drop", "threshold": 0.5}}
-    }}
-  ],
-  "recommendations": ["additional recommendations"]
-}}
-
-Cleaning rules:
-1. Drop columns with >50% missing values
-2. For <50% missing: impute numeric (median), categorical (mode)
-3. Cast datetime strings to proper types if detected
-4. Remove exact duplicate rows
-5. Handle outliers in numeric columns (>3 std devs) by capping
-6. Normalize categorical values (lowercase, strip whitespace)
-
-Return ONLY valid JSON."""
 
         try:
-            # Call Claude
-            response = claude.call(prompt, max_tokens=2048)
+            # Step 1: Plan cleaning with Claude
+            print("[DataAgent]   Step 1/3: Planning cleaning operations...")
+            cleaning_plan = self.intelligent_cleaner.plan_cleaning(df=df, schema=schema)
 
-            # Parse response
-            response_clean = response.strip()
-            if response_clean.startswith("```"):
-                lines = response_clean.split('\n')
-                response_clean = '\n'.join(lines[1:-1]) if len(lines) > 2 else response_clean
-                if response_clean.startswith("json"):
-                    response_clean = response_clean[4:].strip()
+            print(f"[DataAgent]   Planned {len(cleaning_plan.get('cleaning_operations', []))} operations")
 
-            cleaning_strategy = json.loads(response_clean)
+            # Step 2: Execute cleaning in sandbox
+            print("[DataAgent]   Step 2/3: Executing cleaning code in sandbox...")
+            execution_result = self.intelligent_cleaner.execute_cleaning(
+                df=df,
+                cleaning_plan=cleaning_plan
+            )
 
-            # Execute cleaning operations
-            for op in cleaning_strategy.get("operations", []):
-                operation_type = op.get("operation")
-                column = op.get("column")
-                reason = op.get("reason", "")
-                params = op.get("parameters", {})
+            if not execution_result['success']:
+                print(f"[DataAgent]   WARNING: Cleaning execution failed: {execution_result.get('error', 'unknown')}")
+                print("[DataAgent]   Falling back to original data")
+                cleaned_df = df.copy()
+                transform_log = self._create_basic_transform_log(df, df, [])
+            else:
+                cleaned_df = execution_result['cleaned_df']
+                transform_log_list = execution_result.get('transform_log', [])
 
-                try:
-                    if operation_type == "drop_column" and column in cleaned_df.columns:
-                        cleaned_df = cleaned_df.drop(columns=[column])
-                        operations.append({
-                            "operation": "drop_column",
-                            "column": column,
-                            "reason": reason,
-                            "rows_affected": 0
-                        })
+                # Step 3: Validate cleaning results
+                print("[DataAgent]   Step 3/3: Validating cleaning results...")
+                validation = self.intelligent_cleaner.validate_cleaning(
+                    original_df=df,
+                    cleaned_df=cleaned_df,
+                    transform_log=transform_log_list
+                )
 
-                    elif operation_type == "impute_missing" and column in cleaned_df.columns:
-                        method = params.get("method", "median")
-                        missing_count = cleaned_df[column].isnull().sum()
+                print(f"[DataAgent]   Validation status: {validation['status']}")
+                if validation['issues']:
+                    print(f"[DataAgent]   Issues found: {len(validation['issues'])}")
+                    for issue in validation['issues']:
+                        print(f"[DataAgent]     - {issue['severity']}: {issue['message']}")
 
-                        if missing_count > 0:
-                            if method == "median" and pd.api.types.is_numeric_dtype(cleaned_df[column]):
-                                cleaned_df[column].fillna(cleaned_df[column].median(), inplace=True)
-                            elif method == "mode":
-                                mode_val = cleaned_df[column].mode()[0] if not cleaned_df[column].mode().empty else None
-                                if mode_val is not None:
-                                    cleaned_df[column].fillna(mode_val, inplace=True)
-                            elif method == "drop":
-                                cleaned_df = cleaned_df.dropna(subset=[column])
+                # Create comprehensive transformation log
+                transform_log = {
+                    "operations": transform_log_list,
+                    "provenance": {
+                        "original_rows": original_rows,
+                        "final_rows": len(cleaned_df),
+                        "columns_dropped": original_rows - len(cleaned_df),
+                        "timestamp": pd.Timestamp.now().isoformat()
+                    },
+                    "validation": validation,
+                    "intelligent_mode": True,
+                    "expected_improvements": execution_result.get('expected_improvements', {}),
+                    "warnings": execution_result.get('warnings', [])
+                }
 
-                            operations.append({
-                                "operation": "impute_missing",
-                                "column": column,
-                                "method": method,
-                                "reason": reason,
-                                "rows_affected": int(missing_count)
-                            })
+            print(f"[DataAgent] ✓ Intelligent cleaning complete: {len(transform_log.get('operations', []))} operations")
 
-                    elif operation_type == "cast_type" and column in cleaned_df.columns:
-                        target_type = params.get("target_type", "datetime")
-                        if target_type == "datetime":
-                            cleaned_df[column] = pd.to_datetime(cleaned_df[column], errors='coerce')
-                            operations.append({
-                                "operation": "cast_type",
-                                "column": column,
-                                "target_type": target_type,
-                                "reason": reason,
-                                "rows_affected": 0
-                            })
-
-                    elif operation_type == "remove_duplicates":
-                        before_count = len(cleaned_df)
-                        cleaned_df = cleaned_df.drop_duplicates()
-                        removed = before_count - len(cleaned_df)
-                        if removed > 0:
-                            operations.append({
-                                "operation": "remove_duplicates",
-                                "column": None,
-                                "reason": reason,
-                                "rows_affected": int(removed)
-                            })
-
-                    elif operation_type == "handle_outliers" and column in cleaned_df.columns:
-                        if pd.api.types.is_numeric_dtype(cleaned_df[column]):
-                            mean = cleaned_df[column].mean()
-                            std = cleaned_df[column].std()
-                            threshold = params.get("std_threshold", 3)
-
-                            upper_cap = mean + (threshold * std)
-                            lower_cap = mean - (threshold * std)
-
-                            outliers = ((cleaned_df[column] > upper_cap) | (cleaned_df[column] < lower_cap)).sum()
-
-                            if outliers > 0:
-                                cleaned_df[column] = cleaned_df[column].clip(lower=lower_cap, upper=upper_cap)
-                                operations.append({
-                                    "operation": "handle_outliers",
-                                    "column": column,
-                                    "method": "cap_at_3std",
-                                    "reason": reason,
-                                    "rows_affected": int(outliers)
-                                })
-
-                    elif operation_type == "normalize_categorical" and column in cleaned_df.columns:
-                        if cleaned_df[column].dtype == 'object':
-                            cleaned_df[column] = cleaned_df[column].str.strip().str.lower()
-                            operations.append({
-                                "operation": "normalize_categorical",
-                                "column": column,
-                                "reason": reason,
-                                "rows_affected": len(cleaned_df)
-                            })
-
-                except Exception as op_error:
-                    print(f"[DataAgent] ⚠️  Failed to execute {operation_type} on {column}: {op_error}")
-
-            print(f"[DataAgent] ✓ Cleaning complete: {len(operations)} operations applied")
+            return cleaned_df, transform_log
 
         except Exception as e:
-            print(f"[DataAgent] ⚠️  Claude cleaning strategy failed: {e}")
-            print("[DataAgent] Applying basic cleaning...")
+            # Fallback to basic cleaning if intelligent mode fails
+            print(f"[DataAgent] ERROR: Intelligent cleaning failed: {e}")
+            print("[DataAgent] Falling back to basic cleaning...")
+            return self._fallback_clean_data(df)
 
-            # Basic fallback cleaning
-            # 1. Remove duplicates
-            before_count = len(cleaned_df)
-            cleaned_df = cleaned_df.drop_duplicates()
-            if before_count > len(cleaned_df):
-                operations.append({
-                    "operation": "remove_duplicates",
-                    "column": None,
-                    "reason": "Basic cleaning",
-                    "rows_affected": before_count - len(cleaned_df)
-                })
-
-        # Create transformation log
-        transform_log = {
+    def _create_basic_transform_log(
+        self,
+        original_df: pd.DataFrame,
+        cleaned_df: pd.DataFrame,
+        operations: list
+    ) -> Dict[str, Any]:
+        """Create basic transformation log"""
+        return {
             "operations": operations,
             "provenance": {
-                "original_rows": original_rows,
+                "original_rows": len(original_df),
                 "final_rows": len(cleaned_df),
-                "columns_dropped": [op["column"] for op in operations if op["operation"] == "drop_column"],
+                "columns_dropped": 0,
                 "timestamp": pd.Timestamp.now().isoformat()
-            }
+            },
+            "intelligent_mode": False,
+            "fallback_reason": "Cleaning execution failed"
         }
+
+    def _fallback_clean_data(self, df: pd.DataFrame) -> tuple:
+        """Basic fallback cleaning if intelligent mode fails"""
+        cleaned_df = df.copy()
+        operations = []
+
+        # Remove duplicates
+        before_count = len(cleaned_df)
+        cleaned_df = cleaned_df.drop_duplicates()
+        if before_count > len(cleaned_df):
+            operations.append({
+                "operation": "remove_duplicates",
+                "rows_affected": before_count - len(cleaned_df)
+            })
+
+        transform_log = self._create_basic_transform_log(df, cleaned_df, operations)
+        transform_log["fallback_reason"] = "Intelligent cleaning system failed"
 
         return cleaned_df, transform_log
 

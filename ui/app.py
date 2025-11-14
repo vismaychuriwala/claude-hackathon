@@ -5,6 +5,7 @@ Handles: Web interface, file upload, status display, visualization gallery
 import json
 import os
 import threading
+import shutil
 from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_from_directory
 from werkzeug.utils import secure_filename
@@ -12,7 +13,7 @@ from config.config import (
     OUTPUT_DIR, RAW_DIR, PLOTS_DIR, STATUS_FILE,
     SCHEMA_FILE, PLOT_METADATA_FILE, INSIGHTS_FILE,
     DATA_QUALITY_REPORT_FILE, ANALYSIS_REPORT_FILE,
-    TRANSFORMATION_LOG_FILE
+    TRANSFORMATION_LOG_FILE, CLEANED_DIR, REPORTS_DIR, LOGS_DIR
 )
 from core.ceo import ceo, AgentRequest
 

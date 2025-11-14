@@ -13,6 +13,7 @@ from config.config import (
     INSIGHTS_FILE, ANALYSIS_REPORT_FILE
 )
 from utils.claude_client import claude
+from utils.intelligent_analysis import IntelligentAnalyzer, DatasetProfile
 
 
 class AnalysisAgent:
@@ -23,6 +24,7 @@ class AnalysisAgent:
 
     def __init__(self):
         self.name = "analysis"
+        self.intelligent_analyzer = IntelligentAnalyzer(agent_name="analysis")
 
     def execute(self, action: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -129,24 +131,119 @@ class AnalysisAgent:
 
     def _statistical_analysis(self, df: pd.DataFrame, schema: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Perform statistical analysis on data
+        Perform INTELLIGENT statistical analysis using Claude-directed approach.
 
         INPUT:
             - df: DataFrame
             - schema: Schema dict
 
         OUTPUT:
-            - Dict with statistics (mean, median, std, skewness, anomalies, etc.)
+            - Dict with:
+              - analysis_plan: Recommended analyses from Claude
+              - execution_results: Results from sandbox execution
+              - validation: Validation feedback from Claude
+              - legacy_stats: Basic stats for backward compatibility
 
-        TODO: Use Claude to perform intelligent statistical analysis
-        - Compute descriptive statistics
-        - Detect skewness and kurtosis
-        - Identify anomalies using statistical methods
-        - Detect patterns and trends
+        IMPROVEMENT OVER OLD VERSION:
+        - Claude determines which analyses are appropriate BEFORE computation
+        - No more "blindly computing mean" for ID columns or categorical data
+        - Code execution in sandbox for flexible analyses
+        - Validation feedback loop to ensure quality
         """
-        print("[AnalysisAgent] Performing statistical analysis...")
+        print("[AnalysisAgent] Performing intelligent statistical analysis...")
 
-        # Compute basic statistics
+        try:
+            # Step 1: Let Claude plan appropriate analyses
+            print("[AnalysisAgent]   Step 1/4: Planning analyses with Claude...")
+            analysis_plan = self.intelligent_analyzer.plan_analysis(
+                df=df,
+                schema=schema,
+                analysis_goal="comprehensive"
+            )
+
+            print(f"[AnalysisAgent]   Planned {len(analysis_plan.get('recommended_analyses', []))} analyses")
+            if analysis_plan.get('inappropriate_analyses'):
+                print(f"[AnalysisAgent]   Avoided {len(analysis_plan['inappropriate_analyses'])} inappropriate analyses")
+
+            # Step 2: Execute planned analyses in sandbox
+            print("[AnalysisAgent]   Step 2/4: Executing analyses in sandbox...")
+            execution_results = self.intelligent_analyzer.execute_analysis(
+                df=df,
+                analysis_plan=analysis_plan,
+                timeout=30
+            )
+
+            print(f"[AnalysisAgent]   Executed {execution_results['execution_summary']['successful']}/{execution_results['execution_summary']['total_planned']} analyses successfully")
+
+            # Step 3: Validate results
+            print("[AnalysisAgent]   Step 3/4: Validating results with Claude...")
+            profile = DatasetProfile(df, schema)
+            validation = self.intelligent_analyzer.validate_results(
+                df=df,
+                profile=profile.to_dict(),
+                execution_results=execution_results
+            )
+
+            print(f"[AnalysisAgent]   Validation status: {validation.get('validation_status', 'unknown')}")
+
+            # Step 4: Create legacy-compatible stats for backward compatibility
+            print("[AnalysisAgent]   Step 4/4: Creating backward-compatible output...")
+            legacy_stats = self._create_legacy_stats_format(execution_results)
+
+            # Combine all results
+            stats = {
+                "analysis_plan": analysis_plan,
+                "execution_results": execution_results,
+                "validation": validation,
+                "legacy_stats": legacy_stats,
+                "intelligent_mode": True
+            }
+
+            return stats
+
+        except Exception as e:
+            # Fallback to basic analysis if intelligent mode fails
+            print(f"[AnalysisAgent] WARNING: Intelligent analysis failed: {e}")
+            print(f"[AnalysisAgent] Falling back to basic analysis mode")
+            return self._fallback_statistical_analysis(df)
+
+    def _create_legacy_stats_format(self, execution_results: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Convert execution results to legacy stats format for backward compatibility.
+        """
+        legacy_stats = {
+            "numeric_columns": {},
+            "categorical_columns": {},
+            "anomalies": [],
+            "correlations": [],
+            "intelligent_analyses": []
+        }
+
+        # Extract results from successful analyses
+        for analysis in execution_results.get('successful_analyses', []):
+            result = analysis.get('result', {})
+
+            # Add to intelligent_analyses for new consumers
+            legacy_stats["intelligent_analyses"].append({
+                "name": analysis['name'],
+                "description": analysis['description'],
+                "result": result
+            })
+
+            # Try to extract legacy-compatible data
+            if isinstance(result, dict):
+                # If result has column-specific stats, add to legacy format
+                if 'column' in result:
+                    col_name = result['column']
+                    if 'mean' in result or 'median' in result:
+                        legacy_stats["numeric_columns"][col_name] = result
+
+        return legacy_stats
+
+    def _fallback_statistical_analysis(self, df: pd.DataFrame) -> Dict[str, Any]:
+        """
+        Fallback to basic statistical analysis if intelligent mode fails.
+        """
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
         categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
 
@@ -154,98 +251,30 @@ class AnalysisAgent:
             "numeric_columns": {},
             "categorical_columns": {},
             "anomalies": [],
-            "correlations": []
+            "correlations": [],
+            "intelligent_mode": False,
+            "fallback_reason": "Intelligent analysis failed"
         }
 
-        # Analyze numeric columns
+        # Basic numeric analysis
         for col in numeric_cols:
             col_data = df[col].dropna()
             if len(col_data) > 0:
                 stats["numeric_columns"][col] = {
+                    "count": int(len(col_data)),
                     "mean": float(col_data.mean()),
                     "median": float(col_data.median()),
                     "std": float(col_data.std()),
                     "min": float(col_data.min()),
-                    "max": float(col_data.max()),
-                    "skewness": float(col_data.skew()),
-                    "kurtosis": float(col_data.kurtosis()),
-                    "null_count": int(df[col].isna().sum()),
-                    "null_pct": float(df[col].isna().sum() / len(df) * 100)
+                    "max": float(col_data.max())
                 }
 
-                # Detect outliers using IQR method
-                Q1 = col_data.quantile(0.25)
-                Q3 = col_data.quantile(0.75)
-                IQR = Q3 - Q1
-                outliers = col_data[(col_data < Q1 - 1.5 * IQR) | (col_data > Q3 + 1.5 * IQR)]
-                if len(outliers) > 0:
-                    stats["anomalies"].append({
-                        "column": col,
-                        "type": "outliers",
-                        "count": len(outliers),
-                        "values": outliers.tolist()[:10]  # Limit to first 10
-                    })
-
-        # Analyze categorical columns
+        # Basic categorical analysis
         for col in categorical_cols:
-            value_counts = df[col].value_counts()
             stats["categorical_columns"][col] = {
                 "unique_count": int(df[col].nunique()),
-                "top_values": value_counts.head(10).to_dict(),
-                "null_count": int(df[col].isna().sum()),
-                "null_pct": float(df[col].isna().sum() / len(df) * 100)
+                "top_values": df[col].value_counts().head(5).to_dict()
             }
-
-        # Compute correlations for numeric columns
-        if len(numeric_cols) > 1:
-            corr_matrix = df[numeric_cols].corr()
-            # Find strong correlations (|corr| > 0.7, excluding diagonal)
-            for i in range(len(numeric_cols)):
-                for j in range(i + 1, len(numeric_cols)):
-                    corr_val = corr_matrix.iloc[i, j]
-                    if abs(corr_val) > 0.7:
-                        stats["correlations"].append({
-                            "col1": numeric_cols[i],
-                            "col2": numeric_cols[j],
-                            "correlation": float(corr_val)
-                        })
-
-        # Use Claude to interpret the statistics
-        prompt = f"""
-Analyze these dataset statistics and provide intelligent insights:
-
-Dataset Info:
-- Total rows: {len(df)}
-- Numeric columns: {len(numeric_cols)}
-- Categorical columns: {len(categorical_cols)}
-
-Numeric Column Statistics:
-{json.dumps(stats["numeric_columns"], indent=2)}
-
-Categorical Column Statistics:
-{json.dumps(stats["categorical_columns"], indent=2)}
-
-Detected Anomalies:
-{json.dumps(stats["anomalies"], indent=2)}
-
-Strong Correlations:
-{json.dumps(stats["correlations"], indent=2)}
-
-Please analyze these statistics and provide:
-1. Key statistical patterns (distribution shapes, skewness interpretation)
-2. Notable anomalies or outliers that need attention
-3. Interesting correlations and what they might indicate
-4. Data quality observations
-
-Return your analysis as plain text, organized in clear sections.
-"""
-
-        try:
-            claude_analysis = claude.call(prompt, max_tokens=2000)
-            stats["claude_interpretation"] = claude_analysis
-        except Exception as e:
-            print(f"[AnalysisAgent] Warning: Claude analysis failed: {e}")
-            stats["claude_interpretation"] = "Analysis not available"
 
         return stats
 

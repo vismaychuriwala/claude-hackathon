@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Dict, Any, List
 from config.config import CLEANED_DIR, PLOTS_DIR, SCHEMA_FILE, PLOT_METADATA_FILE
 from utils.claude_client import claude
+from utils.intelligent_plotting import IntelligentPlotter
 
 
 class PlotAgent:
@@ -23,6 +24,7 @@ class PlotAgent:
 
     def __init__(self):
         self.name = "plot"
+        self.intelligent_plotter = IntelligentPlotter(agent_name="plot", plots_dir=PLOTS_DIR)
 
     def execute(self, action: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -42,7 +44,7 @@ class PlotAgent:
 
     def create_plots(self, cleaned_data_path: str = None) -> Dict[str, Any]:
         """
-        Generate all plots from cleaned data
+        Generate all plots using INTELLIGENT plotting system.
 
         INPUT:
             - cleaned_data_path: Path to cleaned CSV (optional, uses default if None)
@@ -53,30 +55,76 @@ class PlotAgent:
                 "plots": [{"filename": str, "type": str, "description": str}],
                 "total_plots": int
               }
-        """
-        print(f"[PlotAgent] Creating plots...")
 
-        # Load data and schema
+        IMPROVEMENT OVER OLD VERSION:
+        - Claude generates flexible plotting code instead of using fixed plot templates
+        - Can create custom visualizations beyond predefined types
+        - Intelligent selection based on data characteristics
+        """
+        print(f"[PlotAgent] Creating plots with intelligent plotter...")
+
+        try:
+            # Load data and schema
+            df, schema = self._load_data_and_schema(cleaned_data_path)
+
+            # Step 1: Plan plots with Claude
+            print("[PlotAgent]   Step 1/2: Planning visualizations...")
+            plot_plan = self.intelligent_plotter.plan_plots(df=df, schema=schema)
+
+            print(f"[PlotAgent]   Planned {len(plot_plan.get('recommended_plots', []))} plots")
+            if plot_plan.get('inappropriate_plots'):
+                print(f"[PlotAgent]   Avoided {len(plot_plan['inappropriate_plots'])} inappropriate plots")
+
+            # Step 2: Execute plot generation
+            print("[PlotAgent]   Step 2/2: Generating plots...")
+            execution_results = self.intelligent_plotter.execute_plots(
+                df=df,
+                plot_plan=plot_plan
+            )
+
+            # Extract plot metadata
+            plots_metadata = execution_results.get('plot_metadata', [])
+
+            # Save metadata
+            metadata_path = self._save_metadata(plots_metadata)
+
+            print(f"[PlotAgent] ✓ Created {len(plots_metadata)} plots successfully")
+
+            return {
+                "plot_metadata_path": str(metadata_path),
+                "plots": plots_metadata,
+                "total_plots": len(plots_metadata),
+                "intelligent_mode": True
+            }
+
+        except Exception as e:
+            print(f"[PlotAgent] ERROR: Intelligent plotting failed: {e}")
+            print("[PlotAgent] Falling back to basic plotting...")
+            return self._fallback_create_plots(cleaned_data_path)
+
+    def _fallback_create_plots(self, cleaned_data_path: str = None) -> Dict[str, Any]:
+        """Fallback to basic plotting if intelligent mode fails"""
         df, schema = self._load_data_and_schema(cleaned_data_path)
 
-        # Determine what plots to create
+        # Create basic plots using old method
         plot_plan = self._plan_plots(df, schema)
 
-        # Generate plots
         plots_metadata = []
         for plan_item in plot_plan:
-            plot_info = self._generate_plot(df, plan_item)
-            plots_metadata.append(plot_info)
+            try:
+                plot_info = self._generate_plot(df, plan_item)
+                plots_metadata.append(plot_info)
+            except Exception as e:
+                print(f"[PlotAgent] Failed to generate plot: {e}")
 
-        # Save metadata
         metadata_path = self._save_metadata(plots_metadata)
-
-        print(f"[PlotAgent] Created {len(plots_metadata)} plots")
 
         return {
             "plot_metadata_path": str(metadata_path),
             "plots": plots_metadata,
-            "total_plots": len(plots_metadata)
+            "total_plots": len(plots_metadata),
+            "intelligent_mode": False,
+            "fallback_reason": "Intelligent plotting failed"
         }
 
     # ========================================

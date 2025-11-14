@@ -29,60 +29,171 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 2rem 1rem;
+            padding: 1.5rem;
         }
 
         header {
             margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border);
+            text-align: center;
         }
 
         h1 {
-            font-size: 1.75rem;
+            font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
 
-        header p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
+        /* Main Tabs */
+        .main-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 2rem;
         }
 
-        .panel {
+        .main-tab-button {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .main-tab-button:hover {
+            color: var(--text-high);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .main-tab-button.active {
+            color: var(--brand);
+            border-bottom-color: var(--brand);
+        }
+
+        .main-tab-content {
+            display: none;
+        }
+
+        .main-tab-content.active {
+            display: block;
+        }
+
+        /* Progress Steps */
+        .progress-container {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-            transition: border-color 0.2s;
+            padding: 2rem;
+            margin-bottom: 2rem;
         }
 
-        .panel:hover {
-            border-color: rgba(59, 130, 246, 0.5);
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        .panel h2 {
-            font-size: 1rem;
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 24px;
+            left: 48px;
+            right: 48px;
+            height: 3px;
+            background: var(--border);
+            z-index: 0;
+        }
+
+        .progress-line {
+            position: absolute;
+            top: 24px;
+            left: 48px;
+            height: 3px;
+            background: var(--brand);
+            z-index: 1;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+            flex: 1;
+        }
+
+        .step-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--surface);
+            border: 3px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-weight: 600;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .step.completed .step-circle {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .step.in_progress .step-circle {
+            background: var(--brand);
+            border-color: var(--brand);
+            color: white;
+            animation: pulse-ring 2s ease-in-out infinite;
+        }
+
+        .step-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            max-width: 100px;
+        }
+
+        .step.completed .step-label,
+        .step.in_progress .step-label {
             color: var(--text-high);
+            font-weight: 500;
         }
 
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-
-        @media (max-width: 768px) {
-            .grid { grid-template-columns: 1fr; }
+        @keyframes pulse-ring {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 12px rgba(59, 130, 246, 0);
+            }
         }
 
         /* Upload */
+        .upload-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
         .upload-area {
             border: 2px dashed var(--border);
             border-radius: 0.75rem;
@@ -103,78 +214,165 @@
             background: rgba(59, 130, 246, 0.1);
         }
 
-        .upload-area p {
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+        }
+
+        .summary-card h3 {
+            font-size: 0.85rem;
             color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .summary-card .value {
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--text-high);
+        }
+
+        .summary-card .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Visualizations Grid */
+        .visuals-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .plot-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            transition: all 0.2s;
+        }
+
+        .plot-card:hover {
+            border-color: rgba(59, 130, 246, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .plot-card img {
+            width: 100%;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            background: white;
+        }
+
+        .plot-card h4 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-high);
+        }
+
+        .plot-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+
+        /* Insights */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 1rem;
+        }
+
+        .insight-card {
+            background: var(--surface);
+            border-left: 3px solid var(--border);
+            border-radius: 0.5rem;
+            padding: 1.25rem;
+        }
+
+        .insight-card.high { border-left-color: var(--error); }
+        .insight-card.medium { border-left-color: var(--amber); }
+        .insight-card.low { border-left-color: var(--success); }
+
+        .insight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.75rem;
+        }
+
+        .insight-type {
+            font-weight: 600;
             font-size: 0.9rem;
         }
 
-        /* Status */
-        .status-item {
-            padding: 0.875rem 1rem;
-            margin: 0.75rem 0;
-            border-left: 3px solid var(--border);
-            background: var(--elev);
-            border-radius: 0.5rem;
-            position: relative;
-        }
-
-        .status-item strong {
+        .severity-badge {
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-            display: block;
-            margin-bottom: 0.25rem;
+            font-weight: 600;
         }
 
-        .status-item small {
+        .severity-badge.high { background: var(--error); color: white; }
+        .severity-badge.medium { background: var(--amber); color: white; }
+        .severity-badge.low { background: var(--success); color: white; }
+
+        /* Sub-tabs for Reports */
+        .sub-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+
+        .sub-tab-button {
+            padding: 0.5rem 1rem;
+            background: none;
+            border: none;
             color: var(--text-muted);
-            font-size: 0.75rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
         }
 
-        .status-item.completed {
-            border-left-color: var(--success);
-            background: rgba(16, 185, 129, 0.1);
+        .sub-tab-button:hover {
+            color: var(--text-high);
         }
 
-        .status-item.in_progress {
-            border-left-color: var(--brand);
-            background: rgba(59, 130, 246, 0.1);
-            animation: pulse 2s ease-in-out infinite;
+        .sub-tab-button.active {
+            color: var(--brand);
+            border-bottom-color: var(--brand);
         }
 
-        .status-item.in_progress::after {
-            content: '';
-            position: absolute;
-            right: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 16px;
-            height: 16px;
-            border: 2px solid var(--brand);
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .sub-tab-content {
+            display: none;
         }
 
-        .status-item.failed {
-            border-left-color: var(--error);
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.85; }
-        }
-
-        @keyframes spin {
-            to { transform: translateY(-50%) rotate(360deg); }
+        .sub-tab-content.active {
+            display: block;
         }
 
         /* Tables */
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
         }
 
         table th {
@@ -196,187 +394,195 @@
             background: var(--elev);
         }
 
-        /* Plots */
-        .plot-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1rem;
-        }
-
-        .plot-item {
-            background: var(--elev);
-            border: 1px solid var(--border);
-            padding: 1rem;
-            border-radius: 0.75rem;
-            transition: all 0.2s;
-        }
-
-        .plot-item:hover {
-            border-color: rgba(59, 130, 246, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .plot-item img {
-            width: 100%;
-            border-radius: 0.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .plot-item h4 {
-            font-size: 0.95rem;
-            margin-bottom: 0.5rem;
-            text-transform: capitalize;
-        }
-
-        .plot-item p {
+        .report-full {
             color: var(--text-muted);
-            font-size: 0.85rem;
-        }
-
-        /* Insights */
-        .insight {
-            padding: 1rem;
-            margin: 0.75rem 0;
-            border-left: 3px solid var(--border);
-            background: var(--elev);
-            border-radius: 0.5rem;
-        }
-
-        .insight.high {
-            border-left-color: var(--error);
-            background: rgba(239, 68, 68, 0.1);
-        }
-
-        .insight.medium {
-            border-left-color: var(--amber);
-            background: rgba(245, 158, 11, 0.1);
-        }
-
-        .insight.low {
-            border-left-color: var(--success);
-            background: rgba(16, 185, 129, 0.1);
-        }
-
-        .insight strong {
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            letter-spacing: 0.05em;
-        }
-
-        /* Report */
-        .report-content {
+            font-size: 0.9rem;
             line-height: 1.8;
         }
 
-        .report-content h2 {
-            font-size: 1.25rem;
-            margin-top: 1.5rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .report-content h3 {
-            font-size: 1.1rem;
-            margin-top: 1.25rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .report-content p {
+        .empty-state {
+            text-align: center;
+            padding: 4rem 1rem;
             color: var(--text-muted);
-            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
         }
 
-        .report-content li {
-            color: var(--text-muted);
-            margin: 0.25rem 0;
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
         }
 
-        /* Upload Status */
-        #uploadStatus p {
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            margin-top: 0.75rem;
-            font-size: 0.875rem;
-        }
+        @media (max-width: 768px) {
+            .visuals-grid,
+            .insights-grid,
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
 
-        #uploadStatus .success {
-            background: rgba(16, 185, 129, 0.1);
-            color: var(--success);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
+            .progress-steps {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
 
-        #uploadStatus .error {
-            background: rgba(239, 68, 68, 0.1);
-            color: var(--error);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            .progress-steps::before,
+            .progress-line {
+                display: none;
+            }
+
+            .main-tabs {
+                overflow-x: auto;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Multi-Agent Data Command Center</h1>
-            <p>Upload data for automated AI analysis</p>
+            <h1>🤖 Multi-Agent Data Command Center</h1>
+            <p style="color: var(--text-muted);">Upload data for automated AI analysis with intelligent agents</p>
         </header>
 
-        <!-- Upload -->
-        <div class="panel">
-            <h2>Upload Data File</h2>
-            <div class="upload-area" id="uploadArea">
-                <p>Drag and drop file here or click to browse</p>
-                <p style="font-size: 0.8rem; margin-top: 0.5rem;">Supported: CSV, Excel, JSON, PDF</p>
-                <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.xls,.json,.pdf,.txt">
-            </div>
-            <div id="uploadStatus"></div>
+        <!-- Main Navigation Tabs -->
+        <div class="main-tabs">
+            <button class="main-tab-button active" onclick="switchMainTab('dashboard')">
+                🏠 Dashboard
+            </button>
+            <button class="main-tab-button" onclick="switchMainTab('visualizations')" id="visualsTabBtn">
+                📊 Visualizations
+            </button>
+            <button class="main-tab-button" onclick="switchMainTab('insights')" id="insightsTabBtn">
+                💡 Insights
+            </button>
+            <button class="main-tab-button" onclick="switchMainTab('reports')" id="reportsTabBtn">
+                📋 Reports
+            </button>
         </div>
 
-        <!-- Status -->
-        <div class="panel">
-            <h2>Pipeline Status</h2>
-            <div id="statusDisplay">
-                <p style="color: var(--text-muted); font-size: 0.9rem;">No pipeline running</p>
+        <!-- Dashboard Tab -->
+        <div class="main-tab-content active" id="dashboardTab">
+            <!-- Upload -->
+            <div class="upload-panel" id="uploadPanel">
+                <div class="upload-area" id="uploadArea">
+                    <p style="font-size: 1.1rem; margin-bottom: 0.5rem;">📁 Drag and drop file here or click to browse</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted);">Supported: CSV, Excel, JSON, PDF (max 100MB)</p>
+                    <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.xls,.json,.pdf,.txt">
+                </div>
+                <div id="uploadStatus"></div>
             </div>
-        </div>
 
-        <!-- Data & Reports -->
-        <div class="grid">
-            <div class="panel">
-                <h2>Data Schema</h2>
-                <div id="schemaDisplay">
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Schema will appear here after processing</p>
+            <!-- Progress -->
+            <div class="progress-container" id="progressContainer" style="display: none;">
+                <div class="progress-steps">
+                    <div class="progress-line" id="progressLine"></div>
+
+                    <div class="step" data-stage="data">
+                        <div class="step-circle">1</div>
+                        <div class="step-label">Data Cleaning</div>
+                    </div>
+
+                    <div class="step" data-stage="plot">
+                        <div class="step-circle">2</div>
+                        <div class="step-label">Visualizations</div>
+                    </div>
+
+                    <div class="step" data-stage="analysis">
+                        <div class="step-circle">3</div>
+                        <div class="step-label">AI Analysis</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="panel">
-                <h2>Data Quality Report</h2>
-                <div id="qualityReport">
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Report will appear here after processing</p>
+            <!-- Summary Cards -->
+            <div id="summarySection" style="display: none;">
+                <h2 style="font-size: 1.1rem; margin-bottom: 1rem;">Summary</h2>
+                <div class="summary-grid" id="summaryCards"></div>
+            </div>
+        </div>
+
+        <!-- Visualizations Tab -->
+        <div class="main-tab-content" id="visualizationsTab">
+            <div class="empty-state" id="visualsEmpty">
+                <div class="icon">📊</div>
+                <p>No visualizations yet. Upload a file to get started.</p>
+            </div>
+            <div id="plotsGallery" class="visuals-grid"></div>
+        </div>
+
+        <!-- Insights Tab -->
+        <div class="main-tab-content" id="insightsTab">
+            <div class="empty-state" id="insightsEmpty">
+                <div class="icon">💡</div>
+                <p>No insights yet. Upload a file to get started.</p>
+            </div>
+            <div id="insightsDisplay" class="insights-grid"></div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div class="main-tab-content" id="reportsTab">
+            <div class="empty-state" id="reportsEmpty">
+                <div class="icon">📋</div>
+                <p>No reports yet. Upload a file to get started.</p>
+            </div>
+
+            <div id="reportsContent" style="display: none;">
+                <div class="sub-tabs">
+                    <button class="sub-tab-button active" onclick="switchSubTab('schema')">Schema</button>
+                    <button class="sub-tab-button" onclick="switchSubTab('quality')">Quality Report</button>
+                    <button class="sub-tab-button" onclick="switchSubTab('transformations')">Transformations</button>
                 </div>
-            </div>
-        </div>
 
-        <!-- Visualizations -->
-        <div class="panel">
-            <h2>Visualizations</h2>
-            <div id="plotsGallery" class="plot-grid">
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Plots will appear here after analysis</p>
-            </div>
-        </div>
+                <div class="sub-tab-content active" id="schemaSubTab">
+                    <div id="schemaContent"></div>
+                </div>
 
-        <!-- Insights -->
-        <div class="panel">
-            <h2>AI Insights</h2>
-            <div id="insightsDisplay">
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Insights will appear here after analysis</p>
+                <div class="sub-tab-content" id="qualitySubTab">
+                    <div id="qualityReportContent"></div>
+                </div>
+
+                <div class="sub-tab-content" id="transformationsSubTab">
+                    <div id="transformLogContent"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        let currentRunId = null;
+        let pollingInterval = null;
+        let hasStartedPipeline = false;
+
+        // Main tab switching
+        function switchMainTab(tabName) {
+            document.querySelectorAll('.main-tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.main-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Sub tab switching
+        function switchSubTab(tabName) {
+            document.querySelectorAll('.sub-tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.sub-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'SubTab').classList.add('active');
+        }
+
+        // Upload handling
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
         const uploadStatus = document.getElementById('uploadStatus');
 
-        // Upload handling
         uploadArea.addEventListener('click', () => fileInput.click());
 
         uploadArea.addEventListener('dragover', (e) => {
@@ -404,7 +610,11 @@
             const formData = new FormData();
             formData.append('file', file);
 
-            uploadStatus.innerHTML = '<p>Uploading...</p>';
+            uploadStatus.innerHTML = '<p style="color: var(--brand); padding: 1rem; text-align: center;">⏳ Uploading...</p>';
+
+            hasStartedPipeline = true;
+            currentRunId = Date.now();
+            clearPreviousData();
 
             fetch('/api/upload', {
                 method: 'POST',
@@ -413,18 +623,44 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    uploadStatus.innerHTML = `<p class="success">✓ ${data.message}</p>`;
+                    uploadStatus.innerHTML = `<p style="color: var(--success); padding: 1rem; text-align: center;">✓ ${data.message}</p>`;
+                    document.getElementById('progressContainer').style.display = 'block';
                     startPolling();
                 } else {
-                    uploadStatus.innerHTML = `<p class="error">✗ ${data.message}</p>`;
+                    uploadStatus.innerHTML = `<p style="color: var(--error); padding: 1rem; text-align: center;">✗ ${data.message}</p>`;
+                    hasStartedPipeline = false;
                 }
             })
             .catch(error => {
-                uploadStatus.innerHTML = `<p class="error">✗ Upload failed: ${error.message}</p>`;
+                uploadStatus.innerHTML = `<p style="color: var(--error); padding: 1rem; text-align: center;">✗ Upload failed: ${error.message}</p>`;
+                hasStartedPipeline = false;
             });
         }
 
-        let pollingInterval;
+        function clearPreviousData() {
+            // Clear all content
+            document.getElementById('plotsGallery').innerHTML = '';
+            document.getElementById('insightsDisplay').innerHTML = '';
+            document.getElementById('qualityReportContent').innerHTML = '';
+            document.getElementById('schemaContent').innerHTML = '';
+            document.getElementById('transformLogContent').innerHTML = '';
+            document.getElementById('summaryCards').innerHTML = '';
+
+            // Show empty states
+            document.getElementById('visualsEmpty').style.display = 'block';
+            document.getElementById('insightsEmpty').style.display = 'block';
+            document.getElementById('reportsEmpty').style.display = 'block';
+            document.getElementById('reportsContent').style.display = 'none';
+            document.getElementById('summarySection').style.display = 'none';
+
+            // Reset progress
+            updateProgress(0);
+            document.querySelectorAll('.step').forEach(step => {
+                step.classList.remove('completed', 'in_progress');
+                const stage = step.dataset.stage;
+                step.querySelector('.step-circle').innerHTML = stage === 'data' ? '1' : stage === 'plot' ? '2' : '3';
+            });
+        }
 
         function startPolling() {
             pollingInterval = setInterval(updateStatus, 2000);
@@ -432,15 +668,18 @@
         }
 
         function updateStatus() {
+            if (!hasStartedPipeline) return;
+
             fetch('/api/status')
                 .then(response => response.json())
                 .then(status => {
-                    displayStatus(status);
+                    updateProgressSteps(status);
 
                     if (status.stages) {
                         if (status.stages.data && status.stages.data.status === 'completed') {
                             loadSchema();
                             loadQualityReport();
+                            loadTransformLog();
                         }
 
                         if (status.stages.plot && status.stages.plot.status === 'completed') {
@@ -449,6 +688,7 @@
 
                         if (status.stages.analysis && status.stages.analysis.status === 'completed') {
                             loadInsights();
+                            updateSummary(status);
                         }
 
                         const allComplete = Object.values(status.stages).every(
@@ -463,174 +703,231 @@
                 });
         }
 
-        function displayStatus(status) {
-            const statusDiv = document.getElementById('statusDisplay');
-            if (!status.stages || Object.keys(status.stages).length === 0) {
-                statusDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No pipeline running</p>';
-                return;
-            }
+        function updateProgressSteps(status) {
+            if (!status.stages) return;
 
-            let html = '';
-            for (const [stage, info] of Object.entries(status.stages)) {
+            const stages = ['data', 'plot', 'analysis'];
+            let completedCount = 0;
+
+            stages.forEach((stageName) => {
+                const step = document.querySelector(`.step[data-stage="${stageName}"]`);
+                const stage = status.stages[stageName];
+
+                if (stage) {
+                    step.classList.remove('completed', 'in_progress');
+
+                    if (stage.status === 'completed') {
+                        step.classList.add('completed');
+                        step.querySelector('.step-circle').innerHTML = '✓';
+                        completedCount++;
+                    } else if (stage.status === 'in_progress') {
+                        step.classList.add('in_progress');
+                    }
+                }
+            });
+
+            const progress = (completedCount / stages.length) * 100;
+            updateProgress(progress);
+        }
+
+        function updateProgress(percentage) {
+            document.getElementById('progressLine').style.width = `${percentage}%`;
+        }
+
+        function updateSummary(status) {
+            const summarySection = document.getElementById('summarySection');
+            const summaryCards = document.getElementById('summaryCards');
+
+            summarySection.style.display = 'block';
+
+            // Fetch all data for summary
+            Promise.all([
+                fetch('/api/schema').then(r => r.json()).catch(() => null),
+                fetch('/api/plots').then(r => r.json()).catch(() => null),
+                fetch('/api/insights').then(r => r.json()).catch(() => null)
+            ]).then(([schema, plots, insights]) => {
+                let html = '';
+
+                if (schema) {
+                    html += `
+                        <div class="summary-card">
+                            <h3>Columns</h3>
+                            <div class="value">${schema.columns?.length || 0}</div>
+                            <div class="label">Data fields analyzed</div>
+                        </div>
+                    `;
+                }
+
+                if (plots) {
+                    html += `
+                        <div class="summary-card">
+                            <h3>Visualizations</h3>
+                            <div class="value">${plots.plots?.length || 0}</div>
+                            <div class="label">Charts generated</div>
+                        </div>
+                    `;
+                }
+
+                if (insights) {
+                    const highSeverity = insights.insights?.filter(i => i.severity === 'high').length || 0;
+                    html += `
+                        <div class="summary-card">
+                            <h3>Insights</h3>
+                            <div class="value">${insights.insights?.length || 0}</div>
+                            <div class="label">${highSeverity} high priority</div>
+                        </div>
+                    `;
+                }
+
                 html += `
-                    <div class="status-item ${info.status}">
-                        <strong>${stage}</strong>
-                        ${info.message}
-                        <br><small>${info.timestamp || ''}</small>
+                    <div class="summary-card">
+                        <h3>Status</h3>
+                        <div class="value" style="font-size: 1.5rem;">✓</div>
+                        <div class="label" style="color: var(--success);">Analysis complete</div>
                     </div>
                 `;
-            }
-            statusDiv.innerHTML = html;
-        }
 
-        function loadSchema() {
-            fetch('/api/schema')
-                .then(response => {
-                    if (!response.ok) throw new Error('Schema not available');
-                    return response.json();
-                })
-                .then(schema => {
-                    const schemaDiv = document.getElementById('schemaDisplay');
-                    let html = '<table><tr><th>Column</th><th>Type</th><th>Null %</th><th>Details</th></tr>';
-
-                    schema.columns.forEach(col => {
-                        html += `<tr>
-                            <td><strong>${col.name}</strong></td>
-                            <td>${col.type}</td>
-                            <td>${(col.null_pct * 100).toFixed(1)}%</td>
-                            <td style="font-size: 0.8rem;">
-                                ${col.unique_count ? `Unique: ${col.unique_count}` : ''}
-                                ${col.min !== undefined ? ` Min: ${col.min}` : ''}
-                                ${col.max !== undefined ? ` Max: ${col.max}` : ''}
-                            </td>
-                        </tr>`;
-                    });
-                    html += '</table>';
-
-                    if (schema.warnings && schema.warnings.length > 0) {
-                        html += '<h4 style="margin-top: 1rem; color: var(--amber);">Warnings:</h4><ul>';
-                        schema.warnings.forEach(warning => {
-                            html += `<li style="color: var(--amber);">${warning}</li>`;
-                        });
-                        html += '</ul>';
-                    }
-
-                    schemaDiv.innerHTML = html;
-                })
-                .catch(error => {
-                    document.getElementById('schemaDisplay').innerHTML =
-                        '<p style="color: var(--text-muted); font-size: 0.9rem;">Schema not yet available</p>';
-                });
-        }
-
-        function loadQualityReport() {
-            fetch('/api/reports/quality')
-                .then(response => {
-                    if (!response.ok) throw new Error('Report not available');
-                    return response.text();
-                })
-                .then(markdown => {
-                    const reportDiv = document.getElementById('qualityReport');
-                    let html = markdown
-                        .replace(/^### (.+)$/gm, '<h4>$1</h4>')
-                        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
-                        .replace(/^# (.+)$/gm, '<h2>$1</h2>')
-                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\n\n/g, '</p><p>')
-                        .replace(/^- (.+)$/gm, '<li>$1</li>');
-
-                    reportDiv.innerHTML = '<div class="report-content">' + html + '</div>';
-                })
-                .catch(error => {
-                    document.getElementById('qualityReport').innerHTML =
-                        '<p style="color: var(--text-muted); font-size: 0.9rem;">Quality report not yet available</p>';
-                });
+                summaryCards.innerHTML = html;
+            });
         }
 
         function loadPlots() {
             fetch('/api/plots')
-                .then(response => {
-                    if (!response.ok) throw new Error('Plots not available');
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     const plotsDiv = document.getElementById('plotsGallery');
+                    const emptyState = document.getElementById('visualsEmpty');
 
-                    if (!data.plots || data.plots.length === 0) {
-                        plotsDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No plots generated yet</p>';
-                        return;
-                    }
+                    if (!data.plots || data.plots.length === 0) return;
 
+                    emptyState.style.display = 'none';
                     plotsDiv.innerHTML = '';
 
                     data.plots.forEach(plot => {
-                        const plotItem = document.createElement('div');
-                        plotItem.className = 'plot-item';
-
-                        plotItem.innerHTML = `
-                            <img src="/plots/${plot.filename}" alt="${plot.description || plot.type}">
-                            <h4>${plot.type || 'Plot'}</h4>
-                            <p>${plot.description || 'No description'}</p>
-                            ${plot.insights && plot.insights.length > 0 ?
-                                '<ul style="font-size: 0.8rem; margin-top: 0.5rem; padding-left: 1.25rem;">' +
-                                plot.insights.map(i => `<li>${i}</li>`).join('') +
-                                '</ul>' : ''}
+                        const card = document.createElement('div');
+                        card.className = 'plot-card';
+                        card.innerHTML = `
+                            <img src="/plots/${plot.filename}?t=${currentRunId}" alt="${plot.description || plot.type}" onerror="this.style.display='none'">
+                            <h4>${(plot.type || 'Visualization').replace(/_/g, ' ')}</h4>
+                            <p>${plot.description || 'Data visualization'}</p>
                         `;
-
-                        plotsDiv.appendChild(plotItem);
+                        plotsDiv.appendChild(card);
                     });
-                })
-                .catch(error => {
-                    document.getElementById('plotsGallery').innerHTML =
-                        '<p style="color: var(--text-muted); font-size: 0.9rem;">Plots not yet available</p>';
                 });
         }
 
         function loadInsights() {
             fetch('/api/insights')
-                .then(response => {
-                    if (!response.ok) throw new Error('Insights not available');
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
                     const insightsDiv = document.getElementById('insightsDisplay');
+                    const emptyState = document.getElementById('insightsEmpty');
 
-                    if (!data.insights || data.insights.length === 0) {
-                        insightsDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">No insights generated yet</p>';
-                        return;
-                    }
+                    if (!data.insights || data.insights.length === 0) return;
 
+                    emptyState.style.display = 'none';
                     insightsDiv.innerHTML = '';
 
                     data.insights.forEach(insight => {
-                        const insightEl = document.createElement('div');
-                        insightEl.className = `insight ${insight.severity}`;
-
-                        insightEl.innerHTML = `
-                            <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <strong>${insight.type}</strong>
-                                <span style="background: ${
-                                    insight.severity === 'high' ? 'var(--error)' :
-                                    insight.severity === 'medium' ? 'var(--amber)' : 'var(--success)'
-                                }; color: white; padding: 0.125rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; text-transform: uppercase;">
-                                    ${insight.severity}
-                                </span>
+                        const card = document.createElement('div');
+                        card.className = `insight-card ${insight.severity}`;
+                        card.innerHTML = `
+                            <div class="insight-header">
+                                <div class="insight-type">${insight.type || 'Insight'}</div>
+                                <span class="severity-badge ${insight.severity}">${insight.severity}</span>
                             </div>
-                            <p style="margin: 0.75rem 0;">${insight.description}</p>
-                            ${insight.affected_columns && insight.affected_columns.length > 0 ?
-                                '<p style="font-size: 0.85rem; color: var(--text-muted);">Affects: ' +
-                                insight.affected_columns.join(', ') + '</p>' : ''}
-                            <p style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.85rem;">
+                            <p style="margin-bottom: 0.75rem; color: var(--text-muted);">${insight.description}</p>
+                            ${insight.recommendation ? `<p style="padding-top: 0.75rem; border-top: 1px solid var(--border); font-size: 0.85rem;">
                                 <strong>Recommendation:</strong> ${insight.recommendation}
-                            </p>
+                            </p>` : ''}
                         `;
-
-                        insightsDiv.appendChild(insightEl);
+                        insightsDiv.appendChild(card);
                     });
-                })
-                .catch(error => {
-                    document.getElementById('insightsDisplay').innerHTML =
-                        '<p style="color: var(--text-muted); font-size: 0.9rem;">Insights not yet available</p>';
+                });
+        }
+
+        function loadSchema() {
+            fetch('/api/schema')
+                .then(response => response.json())
+                .then(schema => {
+                    const schemaDiv = document.getElementById('schemaContent');
+                    const reportsEmpty = document.getElementById('reportsEmpty');
+                    const reportsContent = document.getElementById('reportsContent');
+
+                    reportsEmpty.style.display = 'none';
+                    reportsContent.style.display = 'block';
+
+                    let html = '<table><tr><th>Column</th><th>Type</th><th>Missing</th><th>Unique</th></tr>';
+
+                    schema.columns.forEach(col => {
+                        html += `<tr>
+                            <td><strong>${col.name}</strong></td>
+                            <td>${col.type || col.inferred_type || 'unknown'}</td>
+                            <td>${col.null_pct ? (col.null_pct * 100).toFixed(1) + '%' : '0%'}</td>
+                            <td>${col.unique_count || 'N/A'}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+
+                    if (schema.warnings && schema.warnings.length > 0) {
+                        html += '<div style="margin-top: 1.5rem; padding: 1rem; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--amber); border-radius: 0.5rem;">';
+                        html += '<strong style="color: var(--amber);">⚠️ Warnings:</strong><ul style="margin-top: 0.5rem; padding-left: 1.25rem;">';
+                        schema.warnings.forEach(warning => {
+                            html += `<li style="color: var(--text-muted); margin: 0.25rem 0;">${warning}</li>`;
+                        });
+                        html += '</ul></div>';
+                    }
+
+                    schemaDiv.innerHTML = html;
+                });
+        }
+
+        function loadQualityReport() {
+            fetch('/api/reports/quality')
+                .then(response => response.text())
+                .then(markdown => {
+                    const reportDiv = document.getElementById('qualityReportContent');
+
+                    let html = markdown
+                        .replace(/^### (.+)$/gm, '<h4 style="margin-top: 1rem; font-size: 1rem;">$1</h4>')
+                        .replace(/^## (.+)$/gm, '<h3 style="margin-top: 1.25rem; font-size: 1.1rem;">$1</h3>')
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n\n/g, '</p><p>')
+                        .replace(/^- (.+)$/gm, '<li>$1</li>');
+
+                    reportDiv.innerHTML = '<div class="report-full">' + html + '</div>';
+                });
+        }
+
+        function loadTransformLog() {
+            fetch('/api/transformation_log')
+                .then(response => response.json())
+                .then(log => {
+                    const logDiv = document.getElementById('transformLogContent');
+
+                    if (!log.operations || log.operations.length === 0) {
+                        logDiv.innerHTML = '<p style="color: var(--text-muted);">No transformations applied</p>';
+                        return;
+                    }
+
+                    let html = '<table><tr><th>Operation</th><th>Target</th><th>Details</th></tr>';
+
+                    log.operations.forEach(op => {
+                        html += `<tr>
+                            <td><strong>${op.operation}</strong></td>
+                            <td>${op.column || 'All rows'}</td>
+                            <td style="font-size: 0.8rem;">${op.reason || op.method || 'N/A'}</td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+
+                    if (log.provenance) {
+                        html += `<p style="margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem;">
+                            Original rows: ${log.provenance.original_rows} → Final rows: ${log.provenance.final_rows}
+                        </p>`;
+                    }
+
+                    logDiv.innerHTML = html;
                 });
         }
     </script>
