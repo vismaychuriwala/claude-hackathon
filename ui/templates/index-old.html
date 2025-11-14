@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Data Command Center</title>
+    <style>
+        /* Dark minimal theme inspired by portfolio */
+        :root {
+            --bg: #0B0F14;
+            --surface: #0F1520;
+            --elev: #121826;
+            --brand: #3B82F6;
+            --cyan: #06B6D4;
+            --amber: #F59E0B;
+            --text-high: #E5E7EB;
+            --text-muted: #94A3B8;
+            --border: #1F2937;
+            --success: #10B981;
+            --error: #EF4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text-high);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 3rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card/Panel */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            transition: all 0.2s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-2px);
+            border-color: var(--brand);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+        }
+
+        .panel h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--text-high);
+        }
+
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 0.75rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: var(--elev);
+        }
+
+        .upload-area:hover {
+            border-color: var(--brand);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--brand);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-area p:first-child {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-high);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Buttons */
+        button {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* Status Items with Animation */
+        .status-item {
+            padding: 16px 20px;
+            margin: 12px 0;
+            border-left: 4px solid var(--gray-300);
+            background: var(--gray-50);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .status-item strong {
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .status-item.completed {
+            border-left-color: var(--success);
+            background: var(--success-light);
+        }
+
+        .status-item.completed::before {
+            content: '✓';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .status-item.in_progress {
+            border-left-color: var(--info);
+            background: var(--info-light);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-item.in_progress::after {
+            content: '';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--info);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        @keyframes spin {
+            to { transform: translateY(-50%) rotate(360deg); }
+        }
+
+        .status-item.failed {
+            border-left-color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        .status-item.failed::before {
+            content: '✗';
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 24px;
+            color: var(--danger);
+            font-weight: bold;
+        }
+
+        .status-item small {
+            color: var(--gray-600);
+            font-size: 12px;
+        }
+
+        /* Code/Pre blocks */
+        pre {
+            background: var(--gray-900);
+            color: #e5e7eb;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Plot Grid */
+        .plot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .plot-item {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .plot-item:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            transform: translateY(-4px);
+        }
+
+        .plot-item img {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .plot-item h4 {
+            margin: 8px 0;
+            font-size: 16px;
+            color: var(--gray-800);
+            text-transform: capitalize;
+        }
+
+        .plot-item p {
+            color: var(--gray-600);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* Insights */
+        .insight {
+            padding: 20px;
+            margin: 16px 0;
+            border-left: 4px solid var(--gray-300);
+            background: var(--gray-50);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .insight:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            transform: translateX(4px);
+        }
+
+        .insight.high {
+            border-left-color: var(--danger);
+            background: var(--danger-light);
+        }
+
+        .insight.medium {
+            border-left-color: var(--warning);
+            background: var(--warning-light);
+        }
+
+        .insight.low {
+            border-left-color: var(--success);
+            background: var(--success-light);
+        }
+
+        .insight strong {
+            color: var(--gray-700);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        table th {
+            background: var(--gray-100);
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray-700);
+            border-bottom: 2px solid var(--gray-300);
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        table tr:hover {
+            background: var(--gray-50);
+        }
+
+        /* Markdown Report Styling */
+        .report-content h2 {
+            color: var(--gray-900);
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-size: 24px;
+        }
+
+        .report-content h3 {
+            color: var(--gray-800);
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+
+        .report-content h4 {
+            color: var(--gray-700);
+            margin-top: 16px;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .report-content p {
+            line-height: 1.8;
+            margin-bottom: 12px;
+            color: var(--gray-700);
+        }
+
+        .report-content li {
+            margin: 6px 0;
+            color: var(--gray-700);
+        }
+
+        .report-content strong {
+            color: var(--gray-900);
+            font-weight: 600;
+        }
+
+        /* Loading Animation */
+        @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+        }
+
+        .loading {
+            background: linear-gradient(90deg, var(--gray-100) 0%, var(--gray-200) 50%, var(--gray-100) 100%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+            border-radius: 4px;
+            height: 20px;
+            margin: 8px 0;
+        }
+
+        /* Severity Badges */
+        .severity-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .severity-badge.high {
+            background: var(--danger);
+            color: white;
+        }
+
+        .severity-badge.medium {
+            background: var(--warning);
+            color: white;
+        }
+
+        .severity-badge.low {
+            background: var(--success);
+            color: white;
+        }
+
+        /* Upload Status */
+        #uploadStatus p {
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+
+        #uploadStatus .success {
+            background: var(--success-light);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        #uploadStatus .error {
+            background: var(--danger-light);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Multi-Agent Data Command Center</h1>
+            <p>Upload data, let AI agents analyze it automatically</p>
+        </header>
+
+        <!-- File Upload -->
+        <div class="panel">
+            <h2>📁 Upload Data File</h2>
+            <div class="upload-area" id="uploadArea">
+                <p>Drag & drop file here or click to browse</p>
+                <p style="font-size: 12px; color: #999; margin-top: 10px;">
+                    Supported: CSV, Excel, JSON, PDF
+                </p>
+                <input type="file" id="fileInput" style="display: none;" accept=".csv,.xlsx,.xls,.json,.pdf,.txt">
+            </div>
+            <div id="uploadStatus" style="margin-top: 10px;"></div>
+        </div>
+
+        <!-- Status Dashboard -->
+        <div class="panel">
+            <h2>📊 Pipeline Status</h2>
+            <div id="statusDisplay">
+                <p style="color: #999;">No pipeline running</p>
+            </div>
+        </div>
+
+        <!-- Data Preview & Schema -->
+        <div class="grid">
+            <div class="panel">
+                <h2>🔍 Data Schema</h2>
+                <div id="schemaDisplay">
+                    <p style="color: #999;">Schema will appear here after processing</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>📋 Data Quality Report</h2>
+                <div id="qualityReport">
+                    <p style="color: #999;">Report will appear here after processing</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualizations -->
+        <div class="panel">
+            <h2>📈 Visualizations</h2>
+            <div id="plotsGallery" class="plot-grid">
+                <p style="color: #999;">Plots will appear here after analysis</p>
+            </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="panel">
+            <h2>💡 AI Insights</h2>
+            <div id="insightsDisplay">
+                <p style="color: #999;">Insights will appear here after analysis</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AMIT: TODO - Implement JavaScript for:
+        // 1. File upload (drag-drop + click)
+        // 2. Status polling
+        // 3. Data display
+        // 4. Plot gallery
+        // 5. Insights rendering
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) uploadFile(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) uploadFile(file);
+        });
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            uploadStatus.innerHTML = '<p>Uploading...</p>';
+
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    uploadStatus.innerHTML = `<p class="success">✓ ${data.message}</p>`;
+                    startPolling();
+                } else {
+                    uploadStatus.innerHTML = `<p class="error">✗ ${data.message}</p>`;
+                }
+            })
+            .catch(error => {
+                uploadStatus.innerHTML = `<p class="error">✗ Upload failed: ${error.message}</p>`;
+            });
+        }
+
+        let pollingInterval;
+
+        function startPolling() {
+            // Poll status every 2 seconds
+            pollingInterval = setInterval(updateStatus, 2000);
+            updateStatus(); // Initial update
+        }
+
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(status => {
+                    displayStatus(status);
+
+                    // Load results when stages complete
+                    if (status.stages) {
+                        // Load schema and quality report when data stage completes
+                        if (status.stages.data && status.stages.data.status === 'completed') {
+                            loadSchema();
+                            loadQualityReport();
+                        }
+
+                        // Load plots when plot stage completes
+                        if (status.stages.plot && status.stages.plot.status === 'completed') {
+                            loadPlots();
+                        }
+
+                        // Load insights when analysis stage completes
+                        if (status.stages.analysis && status.stages.analysis.status === 'completed') {
+                            loadInsights();
+                        }
+
+                        // Check if all stages are complete and stop polling
+                        const allComplete = Object.values(status.stages).every(
+                            stage => stage.status === 'completed' || stage.status === 'failed'
+                        );
+
+                        if (allComplete && pollingInterval) {
+                            console.log('All stages complete, stopping polling');
+                            clearInterval(pollingInterval);
+                            pollingInterval = null;
+                        }
+                    }
+                });
+        }
+
+        function displayStatus(status) {
+            const statusDiv = document.getElementById('statusDisplay');
+            if (!status.stages || Object.keys(status.stages).length === 0) {
+                statusDiv.innerHTML = '<p style="color: #999;">No pipeline running</p>';
+                return;
+            }
+
+            let html = '';
+            for (const [stage, info] of Object.entries(status.stages)) {
+                html += `
+                    <div class="status-item ${info.status}">
+                        <strong>${stage}</strong>: ${info.message}
+                        <br><small>${info.timestamp || ''}</small>
+                    </div>
+                `;
+            }
+            statusDiv.innerHTML = html;
+        }
+
+        // Load and display schema
+        function loadSchema() {
+            fetch('/api/schema')
+                .then(response => {
+                    if (!response.ok) throw new Error('Schema not available');
+                    return response.json();
+                })
+                .then(schema => {
+                    const schemaDiv = document.getElementById('schemaDisplay');
+                    let html = '<table style="width:100%; border-collapse: collapse;">';
+                    html += '<tr style="background: #f0f0f0;"><th>Column</th><th>Type</th><th>Null %</th><th>Details</th></tr>';
+
+                    schema.columns.forEach(col => {
+                        html += `<tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;"><strong>${col.name}</strong></td>
+                            <td style="padding: 8px;">${col.type}</td>
+                            <td style="padding: 8px;">${(col.null_pct * 100).toFixed(1)}%</td>
+                            <td style="padding: 8px; font-size: 12px;">
+                                ${col.unique_count ? `Unique: ${col.unique_count}` : ''}
+                                ${col.min !== undefined ? `Min: ${col.min}` : ''}
+                                ${col.max !== undefined ? `Max: ${col.max}` : ''}
+                            </td>
+                        </tr>`;
+                    });
+                    html += '</table>';
+
+                    if (schema.warnings && schema.warnings.length > 0) {
+                        html += '<h4 style="margin-top: 15px; color: #ff9800;">Warnings:</h4><ul>';
+                        schema.warnings.forEach(warning => {
+                            html += `<li style="color: #ff9800;">${warning}</li>`;
+                        });
+                        html += '</ul>';
+                    }
+
+                    schemaDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading schema:', error);
+                    document.getElementById('schemaDisplay').innerHTML =
+                        '<p style="color: #999;">Schema not yet available</p>';
+                });
+        }
+
+        // Load and display quality report
+        function loadQualityReport() {
+            fetch('/api/reports/quality')
+                .then(response => {
+                    if (!response.ok) throw new Error('Report not available');
+                    return response.text();
+                })
+                .then(markdown => {
+                    const reportDiv = document.getElementById('qualityReport');
+                    // Simple markdown to HTML conversion
+                    let html = markdown
+                        .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+                        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+                        .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+                        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n\n/g, '</p><p>')
+                        .replace(/^- (.+)$/gm, '<li>$1</li>');
+
+                    reportDiv.innerHTML = '<div class="report-content">' + html + '</div>';
+                })
+                .catch(error => {
+                    console.error('Error loading quality report:', error);
+                    document.getElementById('qualityReport').innerHTML =
+                        '<p style="color: #999;">Quality report not yet available</p>';
+                });
+        }
+
+        // Load and display plots
+        function loadPlots() {
+            fetch('/api/plots')
+                .then(response => {
+                    if (!response.ok) throw new Error('Plots not available');
+                    return response.json();
+                })
+                .then(data => {
+                    const plotsDiv = document.getElementById('plotsGallery');
+
+                    if (!data.plots || data.plots.length === 0) {
+                        plotsDiv.innerHTML = '<p style="color: #999;">No plots generated yet</p>';
+                        return;
+                    }
+
+                    plotsDiv.innerHTML = ''; // Clear existing content
+
+                    data.plots.forEach(plot => {
+                        const plotItem = document.createElement('div');
+                        plotItem.className = 'plot-item';
+                        plotItem.style.cssText = 'background: white; padding: 10px; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+
+                        plotItem.innerHTML = `
+                            <img src="/plots/${plot.filename}"
+                                 alt="${plot.description || plot.type}"
+                                 style="width: 100%; border-radius: 4px; margin-bottom: 10px;"
+                                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22300%22 height=%22200%22><text x=%2250%%22 y=%2250%%22 text-anchor=%22middle%22>Image not found</text></svg>'">
+                            <h4 style="margin: 5px 0; font-size: 14px;">${plot.type || 'Plot'}</h4>
+                            <p style="font-size: 12px; color: #666; margin: 5px 0;">${plot.description || 'No description'}</p>
+                            ${plot.insights && plot.insights.length > 0 ?
+                                '<ul style="font-size: 11px; color: #888; margin: 5px 0; padding-left: 20px;">' +
+                                plot.insights.map(i => `<li>${i}</li>`).join('') +
+                                '</ul>' : ''}
+                        `;
+
+                        plotsDiv.appendChild(plotItem);
+                    });
+
+                    // Add summary
+                    const summary = document.createElement('p');
+                    summary.style.cssText = 'grid-column: 1 / -1; text-align: center; color: #666; margin-top: 10px;';
+                    summary.textContent = `Total plots generated: ${data.total_plots || data.plots.length}`;
+                    plotsDiv.appendChild(summary);
+                })
+                .catch(error => {
+                    console.error('Error loading plots:', error);
+                    document.getElementById('plotsGallery').innerHTML =
+                        '<p style="color: #999;">Plots not yet available</p>';
+                });
+        }
+
+        // Load and display insights
+        function loadInsights() {
+            fetch('/api/insights')
+                .then(response => {
+                    if (!response.ok) throw new Error('Insights not available');
+                    return response.json();
+                })
+                .then(data => {
+                    const insightsDiv = document.getElementById('insightsDisplay');
+
+                    if (!data.insights || data.insights.length === 0) {
+                        insightsDiv.innerHTML = '<p style="color: #999;">No insights generated yet</p>';
+                        return;
+                    }
+
+                    insightsDiv.innerHTML = '';
+
+                    data.insights.forEach(insight => {
+                        const insightEl = document.createElement('div');
+                        insightEl.className = `insight ${insight.severity}`;
+
+                        insightEl.innerHTML = `
+                            <div style="display: flex; justify-content: space-between; align-items: start;">
+                                <strong style="text-transform: uppercase; font-size: 12px;">${insight.type}</strong>
+                                <span style="background: ${
+                                    insight.severity === 'high' ? '#f44336' :
+                                    insight.severity === 'medium' ? '#ff9800' : '#4CAF50'
+                                }; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px;">
+                                    ${insight.severity}
+                                </span>
+                            </div>
+                            <p style="margin: 10px 0;">${insight.description}</p>
+                            ${insight.affected_columns && insight.affected_columns.length > 0 ?
+                                '<p style="font-size: 12px; color: #666;">Affects: ' +
+                                insight.affected_columns.join(', ') + '</p>' : ''}
+                            <p style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
+                                <strong>Recommendation:</strong> ${insight.recommendation}
+                            </p>
+                        `;
+
+                        insightsDiv.appendChild(insightEl);
+                    });
+
+                    // Add summary if available
+                    if (data.summary) {
+                        const summaryEl = document.createElement('div');
+                        summaryEl.style.cssText = 'margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 4px;';
+                        summaryEl.innerHTML = `
+                            <h4 style="margin: 0 0 10px 0;">Summary</h4>
+                            <p style="margin: 5px 0;">Total insights: ${data.summary.total_insights || data.insights.length}</p>
+                            ${data.summary.high_severity ? `<p style="margin: 5px 0; color: #f44336;">High severity: ${data.summary.high_severity}</p>` : ''}
+                            ${data.summary.recommended_next_steps && data.summary.recommended_next_steps.length > 0 ? `
+                                <h5 style="margin: 10px 0 5px 0;">Next Steps:</h5>
+                                <ul style="margin: 5px 0; padding-left: 20px;">
+                                    ${data.summary.recommended_next_steps.map(step => `<li>${step}</li>`).join('')}
+                                </ul>
+                            ` : ''}
+                        `;
+                        insightsDiv.appendChild(summaryEl);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading insights:', error);
+                    document.getElementById('insightsDisplay').innerHTML =
+                        '<p style="color: #999;">Insights not yet available</p>';
+                });
+        }
+
+        // Retry a failed stage
+        function retryStage(stageName) {
+            if (!confirm(`Are you sure you want to retry the ${stageName} stage?`)) {
+                return;
+            }
+
+            fetch(`/api/retry/${stageName}`, {
+                method: 'POST'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Retry initiated for ${stageName} stage`);
+                        updateStatus(); // Refresh status
+                    } else {
+                        alert(`Retry failed: ${data.message}`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error retrying stage:', error);
+                    alert('Failed to retry stage');
+                });
+        }
+    </script>
+</body>
+</html>

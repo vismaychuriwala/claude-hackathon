@@ -226,7 +226,7 @@ Notes:
 
         # Call Claude
         try:
-            response = claude(prompt)
+            response = claude.call(prompt, max_tokens=2048)
 
             # Parse response - extract JSON from response
             response_text = response.strip()
@@ -651,7 +651,7 @@ Return your response in this exact JSON format:
 """
 
         try:
-            response = claude(prompt)
+            response = claude.call(prompt, max_tokens=2048)
 
             # Parse JSON from response
             response_text = response.strip()
